@@ -216,18 +216,18 @@ if __name__ == "__main__":
     OUT_DIR    = "Images_out"
     CORR_DIR   = "Displ_MicMac_cor"
 
-    # processed = process_safe_pair(
-    #     SAFE1, SAFE2, SHAPE, OUT_DIR,
-    #     band="B02", resolution="R10m",
-    #     x_min=3772, y_min=1272, x_size=512, y_size=512
-    # )
+    processed = process_safe_pair(
+        SAFE1, SAFE2, SHAPE, OUT_DIR,
+        band="B02", resolution="R10m",
+        x_min=3772, y_min=1272, x_size=512, y_size=512
+    )
 
-    # wallis_files = [v["wallis"] for v in processed.values()]
-    # run_micmac_correlation(
-    #     wallis_files[0], wallis_files[1],
-    #     out_dir=CORR_DIR,
-    #     sz_w=4, reg=0.5, inc=20
-    # )
+    wallis_files = [v["wallis"] for v in processed.values()]
+    run_micmac_correlation(
+        wallis_files[0], wallis_files[1],
+        out_dir=CORR_DIR,
+        sz_w=4, reg=0.5, inc=20
+    )
 
     dx_path, dy_path = find_displacement_files(CORR_DIR)
 
