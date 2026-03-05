@@ -172,6 +172,14 @@ def plot_displacement(dx_path, dy_path, shape_path, step=10, scale=100, out_path
 
     magnitude = np.sqrt(dx**2 + dy**2)
 
+    print("Min:", np.nanmin(magnitude))
+    print("Max:", np.nanmax(magnitude))
+    print("Count > 1:", np.sum(magnitude > 1))
+    print("Total valid:", np.sum(~np.isnan(magnitude)))
+
+    plt.hist(magnitude, bins=10)
+    plt.show()
+
     H, W = magnitude.shape
     y, x = np.mgrid[0:H:step, 0:W:step]
 
@@ -180,13 +188,17 @@ def plot_displacement(dx_path, dy_path, shape_path, step=10, scale=100, out_path
     v_down_plot = -v_down
     
     plt.figure(figsize=(10, 8))
-    plt.imshow(magnitude, cmap='inferno', origin='upper')
+    im = plt.imshow(
+        magnitude,
+        cmap='inferno',
+        origin='upper'
+        )    
     plt.quiver(x, y, u_down, v_down_plot, color='white', scale=scale)
 
     plt.title("Scale and direction of displacement")
     plt.xlabel("X (pixels)")
     plt.ylabel("Y (pixels)")
-    plt.colorbar(label="Displacement magnitude (pixels)")
+    plt.colorbar(im, label="Displacement magnitude (pixels)",)
     if out_path:
         plt.savefig(out_path, dpi=150)
     plt.show()
@@ -204,18 +216,18 @@ if __name__ == "__main__":
     OUT_DIR    = "Images_out"
     CORR_DIR   = "Displ_MicMac_cor"
 
-    processed = process_safe_pair(
-        SAFE1, SAFE2, SHAPE, OUT_DIR,
-        band="B02", resolution="R10m",
-        x_min=3772, y_min=1272, x_size=512, y_size=512
-    )
+    # processed = process_safe_pair(
+    #     SAFE1, SAFE2, SHAPE, OUT_DIR,
+    #     band="B02", resolution="R10m",
+    #     x_min=3772, y_min=1272, x_size=512, y_size=512
+    # )
 
-    wallis_files = [v["wallis"] for v in processed.values()]
-    run_micmac_correlation(
-        wallis_files[0], wallis_files[1],
-        out_dir=CORR_DIR,
-        sz_w=4, reg=0.5, inc=20
-    )
+    # wallis_files = [v["wallis"] for v in processed.values()]
+    # run_micmac_correlation(
+    #     wallis_files[0], wallis_files[1],
+    #     out_dir=CORR_DIR,
+    #     sz_w=4, reg=0.5, inc=20
+    # )
 
     dx_path, dy_path = find_displacement_files(CORR_DIR)
 
