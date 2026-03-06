@@ -130,7 +130,7 @@ def process_safe_pair(safe1, safe2, shape_path, out_dir,
 # MicMac correlation
 # ---------------------------------------------------------------------------
 
-def run_micmac_correlation(img1, img2, out_dir, sz_w, reg, inc, gamma_cor):
+def run_micmac_correlation(img1, img2, out_dir, sz_w, reg, inc, gamma_cor, cor_min):
     work_dir = os.path.dirname(os.path.abspath(img1))
     abs_out_dir = os.path.abspath(out_dir)
     os.makedirs(abs_out_dir, exist_ok=True)
@@ -139,7 +139,7 @@ def run_micmac_correlation(img1, img2, out_dir, sz_w, reg, inc, gamma_cor):
         ["mm3d", "MM2DPosSism",
          os.path.basename(img1),
          os.path.basename(img2),
-         f"SzW={sz_w}", f"Reg={reg}", f"Inc={inc}", f"GamaCor={gamma_cor}"],
+         f"SzW={sz_w}", f"Reg={reg}", f"Inc={inc}", f"GamaCor={gamma_cor}", f"CorMin={cor_min}"],
         check=True,
         cwd=work_dir
     )
@@ -155,15 +155,15 @@ def run_micmac_correlation(img1, img2, out_dir, sz_w, reg, inc, gamma_cor):
     return out_dir
 
 
-def find_displacement_files(corr_dir):
+def find_displacement_files(corr_dir, pxl_precision):
     def _find(pattern):
         matches = glob.glob(os.path.join(corr_dir, pattern))
         if not matches:
             raise FileNotFoundError(f"No file matching {pattern} in {corr_dir}")
         return matches[0]
 
-    dx = _find("*Px1_Num5*")
-    dy = _find("*Px2_Num5*")
+    dx = _find(f"*Px1_Num{pxl_precision}*")
+    dy = _find(f"*Px2_Num{pxl_precision}*")
     return dx, dy
 
 
@@ -236,7 +236,7 @@ def plot_displacement(dx_path, dy_path, shape_path, safe1, safe2,
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    SAFE1    = "Images/S2A_MSIL2A_20250629T102701_N0511_R108_T32TLR_20250629T143707.SAFE"
+    SAFE1    = "Images/S2A_MSIL2A_20250907T103031_N0511_R108_T32TLR_20250907T142815.SAFE"
     SAFE2    = "Images/S2B_MSIL2A_20250920T102619_N0511_R108_T32TLR_20250920T142941.SAFE"
     SHAPE    = "RGI2000-v7.0-G-11_central_europe/RGI2000-v7.0-G-11_central_europe.shp"
     OUT_DIR  = "Images_out"
@@ -244,10 +244,12 @@ if __name__ == "__main__":
     CORR_CENSUS = "Displ_MicMac_census"
     CORR_WALLIS_CENSUS = "Displ_MicMac_wallis_Census"
 
-    sz_w = 10
-    reg = 0.5
-    inc = 1
-    gamma_cor = 1
+    sz_w = 10  #size of the correlation window (note that it is not sz_w*sz_w but (2*sz_w+1)*(2*sz_w+1))
+    reg = 0.5  #Regularisation param
+    inc = 1    #Initial uncertainty of the algo, higher value means larger exploration (can take a long time)
+    gamma_cor = 1   #weight given to the high correlation matches
+    cor_min = 0.3   #minimal correlation to be considered a match
+    pxl_precision = 3  # between 1 and 5, MicMac returns 5 different displacement map with different resolutions. The lower resolution seems to yield better results in term of expected displacement values but we loose spatial resolution.
 
     processed = process_safe_pair(
         SAFE1, SAFE2, SHAPE, OUT_DIR,
@@ -262,32 +264,32 @@ if __name__ == "__main__":
     run_micmac_correlation(
         wallis_files[0], wallis_files[1],
         out_dir=CORR_WALLIS,
-        sz_w=sz_w, reg=reg, inc=inc, gamma_cor=gamma_cor
+        sz_w=sz_w, reg=reg, inc=inc, gamma_cor=gamma_cor, cor_min=cor_min
     )
 
     run_micmac_correlation(
         census_files[0], census_files[1],
         out_dir=CORR_CENSUS,
-        sz_w=sz_w, reg=reg, inc=inc, gamma_cor=gamma_cor
+        sz_w=sz_w, reg=reg, inc=inc, gamma_cor=gamma_cor, cor_min=cor_min
     )
     
     run_micmac_correlation(
         wallis_census_files[0], wallis_census_files[1],
         out_dir=CORR_WALLIS_CENSUS,
-        sz_w=sz_w, reg=reg, inc=inc, gamma_cor=gamma_cor
+        sz_w=sz_w, reg=reg, inc=inc, gamma_cor=gamma_cor, cor_min=cor_min
     )
 
-    dx_w, dy_w = find_displacement_files(CORR_WALLIS)
+    dx_w, dy_w = find_displacement_files(CORR_WALLIS, pxl_precision=pxl_precision)
     plot_displacement(dx_w, dy_w, SHAPE, SAFE1, SAFE2,
                       step=20, scale=200, title_suffix="Wallis",
                       out_path=os.path.join(OUT_DIR, "displacement_wallis.png"))
 
-    dx_c, dy_c = find_displacement_files(CORR_CENSUS)
+    dx_c, dy_c = find_displacement_files(CORR_CENSUS, pxl_precision=pxl_precision)
     plot_displacement(dx_c, dy_c, SHAPE, SAFE1, SAFE2,
                       step=20, scale=200, title_suffix="Census",
                       out_path=os.path.join(OUT_DIR, "displacement_census.png"))
     
-    dx_w_c, dy_w_c = find_displacement_files(CORR_WALLIS_CENSUS)
+    dx_w_c, dy_w_c = find_displacement_files(CORR_WALLIS_CENSUS, pxl_precision=pxl_precision)
     plot_displacement(dx_w_c, dy_w_c, SHAPE, SAFE1, SAFE2,
                       step=20, scale=200, title_suffix="Wallis + Census",
                       out_path=os.path.join(OUT_DIR, "displacement_wallis_census.png"))
